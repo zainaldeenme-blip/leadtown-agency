@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#11131b"/><stop offset="1" stop-color="#2a205a"/></linearGradient><radialGradient id="o"><stop stop-color="#7655ee" stop-opacity=".45"/><stop offset="1" stop-color="#7655ee" stop-opacity="0"/></radialGradient></defs>
+  <rect width="1200" height="630" fill="url(#g)"/><circle cx="1040" cy="80" r="390" fill="url(#o)"/><circle cx="100" cy="620" r="330" fill="url(#o)"/>
+  <g transform="translate(82 72)"><rect width="52" height="52" rx="14" fill="#6845eb" transform="rotate(-8 26 26)"/><circle cx="26" cy="26" r="11" fill="none" stroke="white" stroke-width="6" stroke-dasharray="48 22"/><text x="72" y="39" font-family="Arial,Helvetica,sans-serif" font-size="34" font-weight="700" fill="white">LeadTown</text></g>
+  <text x="82" y="290" font-family="Arial,Helvetica,sans-serif" font-size="76" font-weight="700" fill="white" letter-spacing="-3">Turn attention into</text><text x="82" y="378" font-family="Arial,Helvetica,sans-serif" font-size="76" font-weight="700" fill="#a58cff" letter-spacing="-3">real customers.</text>
+  <text x="85" y="470" font-family="Arial,Helvetica,sans-serif" font-size="25" fill="#c2c5d0">Ads, landing pages and lead systems for New Zealand businesses.</text>
+  <rect x="83" y="530" width="230" height="3" rx="2" fill="#7655ee"/>
+</svg>

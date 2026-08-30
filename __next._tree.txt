@@ -1,2 +1,2 @@
-:HL["/_next/static/chunks/00v-dkiz3g93a.css","style"]
-0:{"tree":{"name":"","param":null,"prefetchHints":16,"slots":{"children":{"name":"__PAGE__","param":null,"prefetchHints":0,"slots":null}}},"staleTime":300,"buildId":"WmCUoRCX-T7LkmRaNHK8C"}
+:HL["/leadtown-agency/_next/static/chunks/05aoo7-~x9p3t.css","style"]
+0:{"tree":{"name":"","param":null,"prefetchHints":16,"slots":{"children":{"name":"__PAGE__","param":null,"prefetchHints":0,"slots":null}}},"staleTime":300,"buildId":"e2eZ6g8nYQeUA4OLQ-FVz"}
