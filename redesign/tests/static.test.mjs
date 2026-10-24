@@ -1,0 +1,15 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync,existsSync} from 'node:fs';
+const root=existsSync(new URL('../dist/',import.meta.url))?new URL('../dist/',import.meta.url):new URL('../',import.meta.url);
+const html=readFileSync(new URL('index.html',root),'utf8');
+const app=readFileSync(new URL('app.js',root),'utf8');
+const scene=readFileSync(new URL('district.js',root),'utf8');
+test('all local assets and legal pages exist',()=>{for(const match of html.matchAll(/(?:href|src)="\.\/([^"#?]+)"/g))assert.ok(existsSync(new URL(match[1],root)),match[1]);});
+test('local anchor targets exist',()=>{for(const [,id]of html.matchAll(/href="#([^"\s]+)"/g))assert.ok(html.includes(`id="${id}"`),id);});
+test('preview is excluded from indexing and has a single primary heading',()=>{assert.match(html,/noindex,nofollow/);assert.equal((html.match(/<h1[ >]/g)||[]).length,1);});
+test('no inherited unverified campaign claims',()=>{assert.doesNotMatch(html,/6\.79|32,230|4,745|47 leads|guaranteed results|trusted by/i);});
+test('quote flow has distinct review, consent and explicit manual handover',()=>{assert.equal((html.match(/class="quote-step"/g)||[]).length,3);assert.match(html,/Your brief has not been sent/);assert.match(html,/quote-consent/);assert.match(app,/encodeURIComponent\(brief\)/);assert.match(app,/a\.removeAttribute\('href'\)/);assert.doesNotMatch(app,/fetch\(|XMLHttpRequest|sendBeacon/);});
+test('scene includes pause, visibility, reduced-motion and context-loss safeguards',()=>{for(const key of ['prefers-reduced-motion','IntersectionObserver','visibilitychange','webglcontextlost','renderMode'])assert.ok(scene.includes(key),key);});
+test('no framework/ChatGPT runtime or credentials',()=>{assert.doesNotMatch(html+app+scene,/chatgpt\.com|openai\.com|api[_-]?key|sk-[A-Za-z0-9]{20}|_next\//i);});
+test('privacy reflects preview data flow',()=>{const privacy=readFileSync(new URL('privacy.html',root),'utf8');assert.match(privacy,/not automatically sent/);assert.match(privacy,/Google Fonts/);assert.match(privacy,/No advertising pixels/);});
