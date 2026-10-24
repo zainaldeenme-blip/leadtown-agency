@@ -26,7 +26,7 @@ const meshes={base:roundedBox(7,.3,5,.14),tile:roundedBox(1.7,.16,1.7,.07),ads:r
 const purple=[.46,.21,.83],bright=[.63,.40,.96],white=[.98,.96,1],pale=[.88,.83,.95],dark=[.29,.12,.56],ink=[.38,.27,.52],light=[.77,.65,.94];
 function draw(mesh,x,y,z,color,scale=[1,1,1],rotation=0,em=0){gl.bindBuffer(gl.ARRAY_BUFFER,mesh.b);gl.enableVertexAttribArray(loc.p);gl.vertexAttribPointer(loc.p,3,gl.FLOAT,false,0,0);gl.bindBuffer(gl.ARRAY_BUFFER,mesh.nb);gl.enableVertexAttribArray(loc.n);gl.vertexAttribPointer(loc.n,3,gl.FLOAT,false,0,0);gl.uniformMatrix4fv(loc.model,false,model(x,y,z,...scale,rotation));gl.uniform3fv(loc.color,color);gl.uniform1f(loc.emissive,em);gl.drawArrays(gl.TRIANGLES,0,mesh.count);}
 function road(x,z,len,vertical=false,color=light){draw(meshes.road,x,.177,z,color,[len,1,1],vertical?Math.PI/2:0,.6);}
-let width=0,height=0,active=0,focus=0,paused=matchMedia('(prefers-reduced-motion: reduce)').matches,visible=true,hidden=document.hidden,frame=0,last=0,t=0,px=0,py=0,mouseX=0,mouseY=0,settled=0;
+let width=0,height=0,active=0,focus=0,paused=matchMedia('(prefers-reduced-motion: reduce)').matches,visible=true,hidden=document.hidden,frame=0,last=0,t=0,px=0,py=0,mouseX=0,mouseY=0,settled=0,contextLost=false;
 function resize(){const r=canvas.getBoundingClientRect();width=r.width;height=r.height;const dpr=Math.min(devicePixelRatio||1,1.75);canvas.width=Math.round(width*dpr);canvas.height=Math.round(height*dpr);gl.viewport(0,0,canvas.width,canvas.height);request();}
 new ResizeObserver(resize).observe(canvas);
 document.addEventListener('district-stage',e=>{active=e.detail;settled=0;request();});
@@ -39,10 +39,10 @@ canvas.addEventListener('pointerleave',()=>{mouseX=0;mouseY=0;request();});
 let hitPoints=[];
 function project(p,m){const q=[...p,1],v=[0,0,0,0];for(let r=0;r<4;r++)for(let c=0;c<4;c++)v[r]+=m[c*4+r]*q[c];return[(v[0]/v[3]*.5+.5)*width,(-v[1]/v[3]*.5+.5)*height];}
 canvas.addEventListener('click',e=>{const r=canvas.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;let best=-1,dist=Infinity;hitPoints.forEach((p,i)=>{const d=Math.hypot(p[0]-x,p[1]-y);if(d<dist){dist=d;best=i;}});if(best>=0&&dist<Math.min(width*.23,120))document.dispatchEvent(new CustomEvent('district-select',{detail:best}));});
-canvas.addEventListener('webglcontextlost',e=>{e.preventDefault();cancelAnimationFrame(frame);frame=0;host.classList.remove('scene-ready');document.getElementById('scene-hint').textContent='Static view. Explore the system below.';});
+canvas.addEventListener('webglcontextlost',e=>{e.preventDefault();contextLost=true;cancelAnimationFrame(frame);frame=0;host.classList.remove('scene-ready');host.dataset.renderMode='static';document.getElementById('scene-hint').textContent='Static view. Explore the system below.';});
 canvas.addEventListener('webglcontextrestored',()=>{document.getElementById('scene-hint').textContent='Static view. Refresh to restore the live scene.';});
-function request(){if(!frame&&!gl.isContextLost()&&visible&&!hidden)frame=requestAnimationFrame(render);}
-function render(now){frame=0;if(!visible||hidden||gl.isContextLost()||!width||!height)return;const dt=Math.min((now-(last||now))/1000,.05);last=now;if(!paused)t+=dt;focus+=((active-1)-focus)*.07;px+=(mouseX-px)*.05;py+=(mouseY-py)*.05;settled++;
+function request(){if(!contextLost&&!frame&&!gl.isContextLost()&&visible&&!hidden)frame=requestAnimationFrame(render);}
+function render(now){frame=0;if(contextLost||!visible||hidden||gl.isContextLost()||!width||!height)return;const dt=Math.min((now-(last||now))/1000,.05);last=now;if(!paused){t+=dt;focus+=((active-1)-focus)*.07;px+=(mouseX-px)*.05;py+=(mouseY-py)*.05;}else{focus=active-1;px=0;py=0;}settled++;
  const aspect=width/height,viewHeight=Math.max(6.8,7.8/aspect);const eye=[8.2+(paused?0:px*.9)+focus*.4,6.8+(paused?0:py*.4),10.5-focus*.35];const target=[0,.88,0];const vp=mul(ortho(viewHeight*aspect,viewHeight),look(eye,target));gl.uniformMatrix4fv(loc.vp,false,vp);gl.uniform3fv(loc.eye,eye);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
  draw(meshes.base,0,-.03,0,[.92,.89,.96]);
  // Precise inset routes make the buildings one connected system.
@@ -58,7 +58,7 @@ function render(now){frame=0;if(!visible||hidden||gl.isContextLost()||!width||!h
  for(const[x,z]of[[-2.7,1.3],[2.7,-1.2],[-.9,1.6],[1.5,-1.65]]){draw(meshes.tile,x,.24,z,pale,[.26,.7,.26]);draw(meshes.post,x,.55,z,light,[1,1.2,1]);draw(meshes.sphere,x,.8,z,purple,[2.7,3.8,2.7]);}
  for(let i=0;i<7;i++){const phase=(t*.25+i/7)%1;const x=-2.85+phase*5.7;draw(meshes.sphere,x,.23,1.8,bright,[.65,.65,.65],0,.7);}
  hitPoints=positions.map(([x,z],i)=>project([x,i===1?1.8:1.3,z],vp));host.classList.add('scene-ready');host.dataset.renderMode='webgl';
- if(!paused||settled<75)request();
+ if(!paused)request();
 }
 resize();
 })();
