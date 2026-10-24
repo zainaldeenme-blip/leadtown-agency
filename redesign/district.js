@@ -5,7 +5,7 @@ const canvas=document.getElementById('district-canvas'),host=document.getElement
 function fallback(reason){host.dataset.renderMode='static';document.getElementById('scene-hint').textContent='Static 3D view. Explore each part below.';canvas.hidden=true;document.getElementById('sound-toggle').hidden=true;host.dataset.renderReason=reason;}
 let gl;try{gl=canvas.getContext('webgl',{alpha:true,antialias:true,premultipliedAlpha:false,powerPreference:'low-power'});}catch{fallback('WebGL unavailable');return;}if(!gl){fallback('WebGL unavailable');return;}
 const vert=`attribute vec3 p;attribute vec3 n;uniform mat4 model;uniform mat4 vp;varying vec3 normal;varying vec3 world;void main(){vec4 w=model*vec4(p,1.0);world=w.xyz;normal=mat3(model)*n;gl_Position=vp*w;}`;
-const frag=`precision mediump float;varying vec3 normal;varying vec3 world;uniform vec3 color;uniform float emissive;uniform vec3 eye;void main(){vec3 N=normalize(normal);vec3 L=normalize(vec3(-3.,8.,5.));float diffuse=max(dot(N,L),0.);vec3 H=normalize(L+normalize(eye-world));float spec=pow(max(dot(N,H),0.),48.);float rim=pow(1.-max(dot(N,normalize(eye-world)),0.),3.);vec3 c=color*(.57+.43*diffuse)+vec3(.14,.09,.23)*max(dot(N,normalize(vec3(4.,2.,-4.))),0.);c+=vec3(.20)*spec+vec3(.11,.06,.18)*rim;c=mix(c,color,emissive);gl_FragColor=vec4(c,1.);}`;
+const frag=`precision mediump float;varying vec3 normal;varying vec3 world;uniform vec3 color;uniform float emissive;uniform vec3 eye;void main(){vec3 N=normalize(normal);vec3 L=normalize(vec3(-3.,8.,5.));float diffuse=max(dot(N,L),0.);vec3 H=normalize(L+normalize(eye-world));float spec=pow(max(dot(N,H),0.),48.);float rim=pow(1.-max(dot(N,normalize(eye-world)),0.),3.);vec3 c=color*(.57+.43*diffuse)+vec3(.14,.09,.23)*max(dot(N,normalize(vec3(4.,2.,-4.))),0.);c+=vec3(.30,.26,.36)*spec+vec3(.17,.10,.24)*rim;float ground=clamp((world.y+.15)*1.7,.0,1.);c*=.80+.20*ground;c=mix(c,color,emissive);gl_FragColor=vec4(c,1.);}`;
 function shader(type,src){const s=gl.createShader(type);gl.shaderSource(s,src);gl.compileShader(s);if(!gl.getShaderParameter(s,gl.COMPILE_STATUS))throw new Error('Shader compile failed');return s;}
 let program;try{program=gl.createProgram();gl.attachShader(program,shader(gl.VERTEX_SHADER,vert));gl.attachShader(program,shader(gl.FRAGMENT_SHADER,frag));gl.linkProgram(program);if(!gl.getProgramParameter(program,gl.LINK_STATUS)){fallback('Shader link unavailable');return;}}catch{fallback('Shader compile unavailable');return;}
 gl.useProgram(program);const loc={};['p','n'].forEach(k=>loc[k]=gl.getAttribLocation(program,k));['model','vp','color','emissive','eye'].forEach(k=>loc[k]=gl.getUniformLocation(program,k));
@@ -26,10 +26,11 @@ const meshes={base:roundedBox(7,.3,5,.14),tile:roundedBox(1.7,.16,1.7,.07),ads:r
 const purple=[.46,.21,.83],bright=[.63,.40,.96],white=[.98,.96,1],pale=[.88,.83,.95],dark=[.29,.12,.56],ink=[.38,.27,.52],light=[.77,.65,.94];
 function draw(mesh,x,y,z,color,scale=[1,1,1],rotation=0,em=0){gl.bindBuffer(gl.ARRAY_BUFFER,mesh.b);gl.enableVertexAttribArray(loc.p);gl.vertexAttribPointer(loc.p,3,gl.FLOAT,false,0,0);gl.bindBuffer(gl.ARRAY_BUFFER,mesh.nb);gl.enableVertexAttribArray(loc.n);gl.vertexAttribPointer(loc.n,3,gl.FLOAT,false,0,0);gl.uniformMatrix4fv(loc.model,false,model(x,y,z,...scale,rotation));gl.uniform3fv(loc.color,color);gl.uniform1f(loc.emissive,em);gl.drawArrays(gl.TRIANGLES,0,mesh.count);}
 function road(x,z,len,vertical=false,color=light){draw(meshes.road,x,.177,z,color,[len,1,1],vertical?Math.PI/2:0,.6);}
-let width=0,height=0,active=0,focus=0,paused=matchMedia('(prefers-reduced-motion: reduce)').matches,visible=true,hidden=document.hidden,frame=0,last=0,t=0,px=0,py=0,mouseX=0,mouseY=0,settled=0,contextLost=false;
+let width=0,height=0,active=0,focus=-1,closeup=false,zoom=0,cx=0,cz=0,paused=matchMedia('(prefers-reduced-motion: reduce)').matches,visible=true,hidden=document.hidden,frame=0,last=0,t=0,px=0,py=0,mouseX=0,mouseY=0,settled=0,contextLost=false;
 function resize(){const r=canvas.getBoundingClientRect();width=r.width;height=r.height;const dpr=Math.min(devicePixelRatio||1,1.75);canvas.width=Math.round(width*dpr);canvas.height=Math.round(height*dpr);gl.viewport(0,0,canvas.width,canvas.height);request();}
 new ResizeObserver(resize).observe(canvas);
-document.addEventListener('district-stage',e=>{active=e.detail;settled=0;request();});
+document.addEventListener('district-stage',e=>{active=e.detail;closeup=true;host.dataset.closeup='true';settled=0;request();});
+document.addEventListener('district-reset',()=>{closeup=false;host.dataset.closeup='false';request();});
 document.addEventListener('district-motion',e=>{paused=e.detail;settled=0;request();});
 new IntersectionObserver(([entry])=>{visible=entry.isIntersecting;if(visible)request();},{rootMargin:'80px'}).observe(canvas);
 document.addEventListener('visibilitychange',()=>{hidden=document.hidden;if(!hidden){last=0;request();}});
@@ -42,16 +43,20 @@ canvas.addEventListener('click',e=>{const r=canvas.getBoundingClientRect(),x=e.c
 canvas.addEventListener('webglcontextlost',e=>{e.preventDefault();contextLost=true;cancelAnimationFrame(frame);frame=0;host.classList.remove('scene-ready');host.dataset.renderMode='static';document.getElementById('scene-hint').textContent='Static view. Explore the system below.';});
 canvas.addEventListener('webglcontextrestored',()=>{document.getElementById('scene-hint').textContent='Static view. Refresh to restore the live scene.';});
 function request(){if(!contextLost&&!frame&&!gl.isContextLost()&&visible&&!hidden)frame=requestAnimationFrame(render);}
-function render(now){frame=0;if(contextLost||!visible||hidden||gl.isContextLost()||!width||!height)return;const dt=Math.min((now-(last||now))/1000,.05);last=now;if(!paused){t+=dt;focus+=((active-1)-focus)*.07;px+=(mouseX-px)*.05;py+=(mouseY-py)*.05;}else{focus=active-1;px=0;py=0;}settled++;
- const aspect=width/height,viewHeight=Math.max(6.8,7.8/aspect);const eye=[8.2+(paused?0:px*.9)+focus*.4,6.8+(paused?0:py*.4),10.5-focus*.35];const target=[0,.88,0];const vp=mul(ortho(viewHeight*aspect,viewHeight),look(eye,target));gl.uniformMatrix4fv(loc.vp,false,vp);gl.uniform3fv(loc.eye,eye);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
+function render(now){frame=0;if(contextLost||!visible||hidden||gl.isContextLost()||!width||!height)return;const dt=Math.min((now-(last||now))/1000,.05);last=now;if(!paused){t+=dt;focus+=((active-1)-focus)*Math.min(1,dt*5);px+=(mouseX-px)*Math.min(1,dt*5);py+=(mouseY-py)*Math.min(1,dt*5);}else{focus=active-1;px=0;py=0;}settled++;
+ const dest=[[-2,-.8],[.1,.3],[2,1.1]][active],ease=paused?1:Math.min(1,dt*4);
+ zoom+=((closeup?1:0)-zoom)*ease;cx+=((closeup?dest[0]*.62:0)-cx)*ease;cz+=((closeup?dest[1]*.62:0)-cz)*ease;
+ const aspect=width/height,viewHeight=Math.max(6.8,7.8/aspect)*(1-zoom*.23);
+ const orbit=paused?0:Math.sin(t*.22)*.18,azimuth=.67+px*.65+focus*.17+orbit,radius=13.3-zoom*1.1;
+ const eye=[cx+Math.sin(azimuth)*radius,6.8+py*1.9-zoom*.75,cz+Math.cos(azimuth)*radius];const target=[cx,.88+zoom*.45,cz];const vp=mul(ortho(viewHeight*aspect,viewHeight),look(eye,target));gl.uniformMatrix4fv(loc.vp,false,vp);gl.uniform3fv(loc.eye,eye);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
  draw(meshes.base,0,-.03,0,[.92,.89,.96]);
  // Precise inset routes make the buildings one connected system.
  road(0,-1.8,5.8);road(0,1.8,5.8);road(-2.9,0,3.6,true);road(2.9,0,3.6,true);
  road(-.95,.2,2.25);road(.15,.8,1.2,true);road(1.45,1.4,2.6);road(-1.9,-.8,1.9,true);
  const positions=[[-2.0,-.8],[.1,.3],[2,1.1]],colors=[purple,white,bright];
- positions.forEach(([x,z],i)=>{const lift=paused?(active===i?.08:0):(active===i?.08+Math.sin(t*1.4+i)*.025:0);draw(meshes.tile,x,.2,z,i===active?[.85,.75,.98]:[.95,.92,.99]);
+ positions.forEach(([x,z],i)=>{const lift=paused?(active===i?.18:0):(active===i?.18+Math.sin(t*1.4+i)*.065:0);draw(meshes.tile,x,.2,z,i===active?[.85,.75,.98]:[.95,.92,.99]);
  if(i===0){draw(meshes.ads,x,1.36+lift,z,colors[i]);draw(meshes.panel,x,1.45+lift,z+.59,[.58,.34,.9]);for(let j=0;j<4;j++)draw(meshes.line,x-.06,1.84-j*.22+lift,z+.63,j===0?white:light,[.72-j*.1,1,1]);draw(meshes.button,x, .75+lift,z+.63,light,[.8,1,1]);draw(meshes.ring,x,2.74+lift,z,light,[1,1,1],0,.25);draw(meshes.smallring,x,2.74+lift,z,purple);}
- if(i===1){draw(meshes.web,x,1.72+lift,z,white);draw(meshes.browser,x,1.75+lift,z+.365,[.92,.87,.98]);draw(meshes.line,x,2.6+lift,z+.41,pale,[1.12,1,1]);for(let j=0;j<3;j++)draw(meshes.sphere,x-.47+j*.13,2.75+lift,z+.42,j===0?purple:light,[.45,.45,.45]);draw(meshes.panel,x,2.03+lift,z+.43,purple,[1.08,.66,1]);draw(meshes.line,x-.14,2.18+lift,z+.48,white,[.59,1,1]);draw(meshes.line,x-.21,2.04+lift,z+.48,light,[.45,1,1]);draw(meshes.line,x-.08,1.35+lift,z+.43,light,[.94,1,1]);draw(meshes.line,x-.21,1.18+lift,z+.43,light,[.68,1,1]);draw(meshes.button,x,.87+lift,z+.43,purple);}
+ if(i===1){draw(meshes.web,x,1.72+lift,z,white);draw(meshes.browser,x,1.75+lift,z+.365+(active===1?zoom*.12:0),[.92,.87,.98]);draw(meshes.line,x,2.6+lift,z+.41+(active===1?zoom*.12:0),pale,[1.12,1,1]);for(let j=0;j<3;j++)draw(meshes.sphere,x-.47+j*.13,2.75+lift,z+.42+(active===1?zoom*.12:0),j===0?purple:light,[.45,.45,.45]);draw(meshes.panel,x,2.03+lift,z+.43+(active===1?zoom*.12:0),purple,[1.08,.66,1]);draw(meshes.line,x-.14,2.18+lift,z+.48+(active===1?zoom*.12:0),white,[.59,1,1]);draw(meshes.line,x-.21,2.04+lift,z+.48+(active===1?zoom*.12:0),light,[.45,1,1]);draw(meshes.line,x-.08,1.35+lift,z+.43+(active===1?zoom*.12:0),light,[.94,1,1]);draw(meshes.line,x-.21,1.18+lift,z+.43+(active===1?zoom*.12:0),light,[.68,1,1]);draw(meshes.button,x,.87+lift,z+.43+(active===1?zoom*.12:0),purple);}
  if(i===2){draw(meshes.lead,x,1.04+lift,z,purple);for(let j=0;j<3;j++){draw(meshes.line,x,1.3-j*.22+lift,z+.65,light,[.82,2.3,1]);draw(meshes.sphere,x-.48,1.3-j*.22+lift,z+.67,white,[.55,.55,.55]);}draw(meshes.tile,x,1.83+lift,z,pale,[.9,1,.9]);draw(meshes.smallring,x,2.09+lift,z,bright,[1.5,1.5,1.5],0,.35);draw(meshes.post,x,2.07+lift,z,purple,[1,1,1]);}
  });
  // Modest planting and architectural details—not fake UI statistics.
@@ -62,3 +67,4 @@ function render(now){frame=0;if(contextLost||!visible||hidden||gl.isContextLost(
 }
 resize();
 })();
+
