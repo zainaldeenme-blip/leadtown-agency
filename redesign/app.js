@@ -26,10 +26,16 @@
     $('#system').dataset.active=String(index);$('#stage-kicker').textContent=d[0];$('#stage-heading').innerHTML=d[1];$('#stage-copy').textContent=d[2];
     $('#stage-chips').replaceChildren(...d[3].map(t=>{const span=document.createElement('span');span.textContent=t;return span;}));
     $('#stage-cta').innerHTML=d[4]+' <span aria-hidden="true">↗</span>';$('#stage-cta').dataset.service=d[5];
-    document.dispatchEvent(new CustomEvent('district-stage',{detail:index}));tone();
+    $('#scene-hint').textContent=['Ads & social — attention starts here.','Websites — turn interest into an enquiry.','Follow-up — give every enquiry a next step.'][index];document.dispatchEvent(new CustomEvent('district-stage',{detail:index}));tone();
   }
   $$('.stage, .scene-label').forEach(el=>el.addEventListener('click',()=>setStage(Number(el.dataset.stage))));
   document.addEventListener('district-select',e=>setStage(e.detail));
+  $('#scene-reset').addEventListener('click',()=>{document.dispatchEvent(new CustomEvent('district-reset'));$('#scene-hint').textContent='Move to look around. Select a building to move closer.';});
+  $$('.service-row').forEach(row=>row.addEventListener('toggle',()=>{
+    if(!row.open)return;
+    $$('.service-row').forEach(other=>{if(other!==row)other.open=false;});
+    requestAnimationFrame(()=>{if(row.getBoundingClientRect().top<110)row.scrollIntoView({behavior:paused?'instant':'smooth',block:'start'});});
+  }));
   function updateMotion() {$('#motion-toggle').setAttribute('aria-pressed',String(paused));$('#motion-toggle').setAttribute('aria-label',paused?'Resume scene motion':'Pause scene motion');$('#motion-toggle').title=paused?'Resume scene motion':'Pause scene motion';$('#motion-toggle').textContent=paused?'▷':'Ⅱ';document.body.classList.toggle('motion-paused',paused);document.dispatchEvent(new CustomEvent('district-motion',{detail:paused}));}
   $('#motion-toggle').addEventListener('click',()=>{paused=!paused;updateMotion();});
   reduced.addEventListener('change',e=>{paused=e.matches;updateMotion();});
@@ -61,3 +67,4 @@
   $('#preferences').addEventListener('click',()=>{document.querySelector('#district').scrollIntoView({behavior:paused?'instant':'smooth',block:'center'});$('#motion-toggle').focus({preventScroll:true});});
   $('.back-top').href='#';
 })();
+
