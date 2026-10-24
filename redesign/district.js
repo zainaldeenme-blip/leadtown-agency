@@ -43,7 +43,7 @@ canvas.addEventListener('webglcontextlost',e=>{e.preventDefault();cancelAnimatio
 canvas.addEventListener('webglcontextrestored',()=>{document.getElementById('scene-hint').textContent='Static view. Refresh to restore the live scene.';});
 function request(){if(!frame&&!gl.isContextLost()&&visible&&!hidden)frame=requestAnimationFrame(render);}
 function render(now){frame=0;if(!visible||hidden||gl.isContextLost()||!width||!height)return;const dt=Math.min((now-(last||now))/1000,.05);last=now;if(!paused)t+=dt;focus+=((active-1)-focus)*.07;px+=(mouseX-px)*.05;py+=(mouseY-py)*.05;settled++;
- const aspect=width/height,viewHeight=6.8;const eye=[8.2+(paused?0:px*.9)+focus*.4,6.8+(paused?0:py*.4),10.5-focus*.35];const target=[0,.88,0];const vp=mul(ortho(viewHeight*aspect,viewHeight),look(eye,target));gl.uniformMatrix4fv(loc.vp,false,vp);gl.uniform3fv(loc.eye,eye);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
+ const aspect=width/height,viewHeight=Math.max(6.8,7.8/aspect);const eye=[8.2+(paused?0:px*.9)+focus*.4,6.8+(paused?0:py*.4),10.5-focus*.35];const target=[0,.88,0];const vp=mul(ortho(viewHeight*aspect,viewHeight),look(eye,target));gl.uniformMatrix4fv(loc.vp,false,vp);gl.uniform3fv(loc.eye,eye);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
  draw(meshes.base,0,-.03,0,[.92,.89,.96]);
  // Precise inset routes make the buildings one connected system.
  road(0,-1.8,5.8);road(0,1.8,5.8);road(-2.9,0,3.6,true);road(2.9,0,3.6,true);

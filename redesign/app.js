@@ -22,13 +22,13 @@
   }
   function setStage(index) {
     stage=index;const d=stageData[index];
-    $$('.stage').forEach((el,i)=>{el.classList.toggle('active',i===index);el.setAttribute('aria-pressed',String(i===index));});
+    $$('.stage, .scene-label').forEach(el=>{const on=Number(el.dataset.stage)===index;el.classList.toggle('active',on);el.setAttribute('aria-pressed',String(on));});
     $('#system').dataset.active=String(index);$('#stage-kicker').textContent=d[0];$('#stage-heading').innerHTML=d[1];$('#stage-copy').textContent=d[2];
     $('#stage-chips').replaceChildren(...d[3].map(t=>{const span=document.createElement('span');span.textContent=t;return span;}));
     $('#stage-cta').innerHTML=d[4]+' <span aria-hidden="true">↗</span>';$('#stage-cta').dataset.service=d[5];
     document.dispatchEvent(new CustomEvent('district-stage',{detail:index}));tone();
   }
-  $$('.stage').forEach(el=>el.addEventListener('click',()=>setStage(Number(el.dataset.stage))));
+  $$('.stage, .scene-label').forEach(el=>el.addEventListener('click',()=>setStage(Number(el.dataset.stage))));
   document.addEventListener('district-select',e=>setStage(e.detail));
   function updateMotion() {$('#motion-toggle').setAttribute('aria-pressed',String(paused));$('#motion-toggle').setAttribute('aria-label',paused?'Resume scene motion':'Pause scene motion');$('#motion-toggle').title=paused?'Resume scene motion':'Pause scene motion';$('#motion-toggle').textContent=paused?'▷':'Ⅱ';document.body.classList.toggle('motion-paused',paused);document.dispatchEvent(new CustomEvent('district-motion',{detail:paused}));}
   $('#motion-toggle').addEventListener('click',()=>{paused=!paused;updateMotion();});
