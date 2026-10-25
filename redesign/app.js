@@ -26,16 +26,18 @@
     $('#system').dataset.active=String(index);$('#stage-kicker').textContent=d[0];$('#stage-heading').innerHTML=d[1];$('#stage-copy').textContent=d[2];
     $('#stage-chips').replaceChildren(...d[3].map(t=>{const span=document.createElement('span');span.textContent=t;return span;}));
     $('#stage-cta').innerHTML=d[4]+' <span aria-hidden="true">↗</span>';$('#stage-cta').dataset.service=d[5];
-    $('#scene-hint').textContent=['Ads & social — attention starts here.','Websites — turn interest into an enquiry.','Follow-up — give every enquiry a next step.'][index];document.dispatchEvent(new CustomEvent('district-stage',{detail:index}));tone();
+    $('#scene-hint').textContent=['Ads & social — attention starts here.','Websites — turn interest into an enquiry.','Follow-up — give every enquiry a next step.'][index];document.dispatchEvent(new CustomEvent('district-stage',{detail:index}));openScenePanel(index);tone();
   }
   $$('.stage, .scene-label').forEach(el=>el.addEventListener('click',()=>setStage(Number(el.dataset.stage))));
   document.addEventListener('district-select',e=>setStage(e.detail));
-  $('#scene-reset').addEventListener('click',()=>{document.dispatchEvent(new CustomEvent('district-reset'));$('#scene-hint').textContent='Move to look around. Select a building to move closer.';});
-  $$('.service-row').forEach(row=>row.addEventListener('toggle',()=>{
-    if(!row.open)return;
-    $$('.service-row').forEach(other=>{if(other!==row)other.open=false;});
-    requestAnimationFrame(()=>{if(row.getBoundingClientRect().top<110)row.scrollIntoView({behavior:paused?'instant':'smooth',block:'start'});});
-  }));
+  function resetScene(){document.dispatchEvent(new CustomEvent('district-reset'));$('#scene-inspector').hidden=true;$('#scene-hint').textContent=$('#district').dataset.renderMode==='static'?'Static 3D view. Explore each part below.':'Move to look around. Select a building to move closer.';}
+  $('#scene-reset').addEventListener('click',resetScene);
+  $('#scene-panel-close').addEventListener('click',()=>{resetScene();$('.scene-label[data-stage="'+stage+'"]').focus({preventScroll:true});});
+  const scenePanels=[['01 / ADS & SOCIAL','Get discovered.','Meta ads and Instagram give your business a considered first impression. We scope the creative, destination and measurement around your goals.','Meta ads','ads'],['02 / WEBSITES','Give interest a home.','A responsive website explains your services, answers useful questions and makes requesting a quote feel straightforward.','Website or landing page','web'],['03 / FOLLOW-UP','Keep the conversation moving.','Connect the enquiry, the responsible person and the next action. Your actual tools and booking process shape the setup.','Full growth system','system']];
+  function openScenePanel(index){const p=scenePanels[index];$('#scene-panel-kicker').textContent=p[0];$('#scene-panel-title').textContent=p[1];$('#scene-panel-copy').textContent=p[2];$('#scene-panel-quote').dataset.service=p[3];$('#scene-panel-explore').href='#service-'+p[4];$('#scene-inspector').hidden=false;}
+  function openService(row){$$('.service-row').forEach(other=>{other.open=other===row;});document.dispatchEvent(new CustomEvent('district-stage',{detail:row.classList.contains('studio-web')?1:row.classList.contains('studio-system')?2:0}));}
+  $$('.service-row').forEach(row=>row.querySelector('summary').addEventListener('click',e=>{e.preventDefault();if(row.open)row.open=false;else openService(row);}));
+  $('#scene-panel-explore').addEventListener('click',()=>{const row=$($('#scene-panel-explore').getAttribute('href'));if(row)openService(row);$('#scene-inspector').hidden=true;});
   function updateMotion() {$('#motion-toggle').setAttribute('aria-pressed',String(paused));$('#motion-toggle').setAttribute('aria-label',paused?'Resume scene motion':'Pause scene motion');$('#motion-toggle').title=paused?'Resume scene motion':'Pause scene motion';$('#motion-toggle').textContent=paused?'▷':'Ⅱ';document.body.classList.toggle('motion-paused',paused);document.dispatchEvent(new CustomEvent('district-motion',{detail:paused}));}
   $('#motion-toggle').addEventListener('click',()=>{paused=!paused;updateMotion();});
   reduced.addEventListener('change',e=>{paused=e.matches;updateMotion();});
@@ -66,5 +68,9 @@
   $('#copy-brief').addEventListener('click',async()=>{if(!$('#quote-consent').checked){$('#copy-status').textContent='Please agree to share the brief first.';return;}try{await navigator.clipboard.writeText(brief);$('#copy-status').textContent='Brief copied. Paste it into your preferred message. Nothing has been sent.';}catch{$('#copy-status').textContent='Copy isn’t available here. Select the brief above and copy it manually.';const range=document.createRange();range.selectNodeContents($('#brief-preview'));getSelection().removeAllRanges();getSelection().addRange(range);}});
   $('#preferences').addEventListener('click',()=>{document.querySelector('#district').scrollIntoView({behavior:paused?'instant':'smooth',block:'center'});$('#motion-toggle').focus({preventScroll:true});});
   $('.back-top').href='#';
+
+  const modelNotes=[["An editorial homepage introduces your business before asking for the next click.","Responsive pages, navigation and content form one deliberate experience.","A visible call to action leads to a brief your customer can review before sending."],["A clear message and visual idea give each ad a reason to exist.","Distinct creative angles can be tested—not just different colours of one ad.","Review spend and genuine enquiry quality together. No result is guaranteed."],["Your profile should feel unmistakably like your business.","Posts, stories and campaigns share a visual language without repeating one template.","The profile gives interested visitors a clear route to your website or an enquiry."],["An enquiry needs an agreed destination, not another forgotten inbox.","A clear owner and next action keep the conversation visible.","Your team follows up and records the outcome. This is an illustration—not a live booking."]];
+  $$('.service-row').forEach((row,i)=>{row.querySelectorAll('[data-model-view]').forEach(button=>button.addEventListener('click',()=>{const view=Number(button.dataset.modelView);row.dataset.modelView=String(view);row.querySelectorAll('[data-model-view]').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));row.querySelector('.model-explanation').textContent=modelNotes[i][view];tone();}));});
 })();
+
 
